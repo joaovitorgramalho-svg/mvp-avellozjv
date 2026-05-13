@@ -1,0 +1,93 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Bell,
+  Users,
+  Bike,
+  Tag,
+  AlertCircle,
+  BarChart2,
+  ChevronRight,
+} from 'lucide-react'
+
+const nav = [
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Atendimentos', href: '/atendimentos', icon: ClipboardList },
+  { label: 'Lembretes', href: '/lembretes', icon: Bell, badge: true },
+  { divider: true },
+  { label: 'Relatórios', href: '/relatorios', icon: BarChart2 },
+  { divider: true },
+  { label: 'Vendedores', href: '/vendedores', icon: Users },
+  { label: 'Tipos de Moto', href: '/motos', icon: Bike },
+  { label: 'Status', href: '/status', icon: Tag },
+  { label: 'Motivos de Perda', href: '/motivos-perda', icon: AlertCircle },
+]
+
+interface SidebarProps {
+  pendingReminders?: number
+}
+
+export function Sidebar({ pendingReminders = 0 }: SidebarProps) {
+  const pathname = usePathname()
+
+  return (
+    <aside className="w-60 shrink-0 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0">
+      {/* Logo */}
+      <div className="px-6 py-5 border-b border-slate-100">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+            <Bike className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-slate-900 leading-none">Avelloz</p>
+            <p className="text-xs text-slate-500 mt-0.5">Gestão comercial</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+        {nav.map((item, i) => {
+          if ('divider' in item) {
+            return <div key={i} className="my-2 border-t border-slate-100" />
+          }
+
+          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
+          const Icon = item.icon
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors group',
+                isActive
+                  ? 'bg-indigo-50 text-indigo-700'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              )}
+            >
+              <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600')} />
+              <span className="flex-1">{item.label}</span>
+              {item.badge && pendingReminders > 0 && (
+                <span className="h-5 min-w-5 px-1 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">
+                  {pendingReminders > 99 ? '99+' : pendingReminders}
+                </span>
+              )}
+              {isActive && <ChevronRight className="h-3.5 w-3.5 text-indigo-400" />}
+            </Link>
+          )
+        })}
+      </nav>
+
+      {/* Footer */}
+      <div className="px-4 py-3 border-t border-slate-100">
+        <p className="text-xs text-slate-400 text-center">MVP Avelloz v1.0</p>
+      </div>
+    </aside>
+  )
+}
