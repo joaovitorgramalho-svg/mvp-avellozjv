@@ -92,12 +92,12 @@ export default function DashboardPage() {
         const total_attended = data.filter((d) => d.seller_id).length
         const total_closed = data.filter((d) => d.statuses?.is_closed).length
         const total_lost = data.filter((d) => d.statuses?.is_lost).length
-        const total_restriction = data.filter((d) => d.statuses?.generates_reminder).length
         const total_pending_reminders = data.filter((d) => d.reminder_active).length
 
         const ccRes = await supabase.from('credit_checks').select('id, result')
         const total_consultations = ccRes.data?.length ?? 0
         const total_approved = ccRes.data?.filter((c) => c.result === 'approved').length ?? 0
+        const total_restriction = ccRes.data?.filter((c) => ['restriction', 'denied'].includes(c.result)).length ?? 0
 
         setStats({
           total_entries,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Header } from '@/components/layout/header'
@@ -14,9 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { formatDate, formatDateTime, formatCPF, creditResultLabel, creditResultColor, nextConsultationDate, cn } from '@/lib/utils'
 import { ArrowLeft, Edit, Plus, Bell, Upload, FileText, CheckCircle, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
-import type { CustomerService, CreditCheck, Status, LossReason } from '@/types'
-
-const GENERATES_REMINDER = ['Consulta com restrição', 'Financiamento negado']
+import type { CustomerService, CreditCheck, Status } from '@/types'
 
 export default function AtendimentoDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -26,16 +24,16 @@ export default function AtendimentoDetailPage() {
   const [loading, setLoading] = useState(true)
   const [showAddCheck, setShowAddCheck] = useState(false)
   const [addingCheck, setAddingCheck] = useState(false)
-  const [statuses, setStatuses] = useState<Status[]>([])
 
   const [checkForm, setCheckForm] = useState({ check_date: '', result: '', notes: '' })
   const [checkFile, setCheckFile] = useState<File | null>(null)
   const [checkErrors, setCheckErrors] = useState<Record<string, string>>({})
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     async function load() {
       const supabase = createClient()
-      const [svc, chk, st] = await Promise.all([
+      const [svc, chk] = await Promise.all([
         supabase
           .from('customer_services')
           .select(`*, seller:seller_id(*), motorcycle_type:motorcycle_type_id(*), status:status_id(*), loss_reason:loss_reason_id(*)`)
@@ -46,11 +44,9 @@ export default function AtendimentoDetailPage() {
           .select('*')
           .eq('customer_service_id', id)
           .order('check_date', { ascending: false }),
-        supabase.from('statuses').select('*').eq('active', true).order('sort_order'),
       ])
       if (svc.data) setService(svc.data as CustomerService)
       if (chk.data) setChecks(chk.data as CreditCheck[])
-      if (st.data) setStatuses(st.data as Status[])
       setLoading(false)
     }
     load()
@@ -80,10 +76,8 @@ export default function AtendimentoDetailPage() {
       }
     }
 
-    const generates = GENERATES_REMINDER.includes(
-      statuses.find((s) => s.id === service?.status_id)?.description ?? ''
-    ) || ['restriction', 'denied'].includes(checkForm.result)
-
+    // Lembrete é gerado exclusivamente pelo resultado da consulta
+    const generates = ['restriction', 'denied'].includes(checkForm.result)
     const nextDate = generates ? nextConsultationDate(checkForm.check_date) : null
 
     const { data: newCheck } = await supabase
@@ -120,10 +114,10 @@ export default function AtendimentoDetailPage() {
     setChecks((prev) => [newCheck as CreditCheck, ...prev])
     setCheckForm({ check_date: '', result: '', notes: '' })
     setCheckFile(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
     setShowAddCheck(false)
     setAddingCheck(false)
 
-    // refresh service
     const { data } = await supabase
       .from('customer_services')
       .select(`*, seller:seller_id(*), motorcycle_type:motorcycle_type_id(*), status:status_id(*), loss_reason:loss_reason_id(*)`)
@@ -151,7 +145,6 @@ export default function AtendimentoDetailPage() {
   }
 
   const status = service.status as Status | null
-  const isClosedOrLost = status?.is_closed || status?.is_lost
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -177,7 +170,6 @@ export default function AtendimentoDetailPage() {
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-          {/* Info principal */}
           <div className="lg:col-span-2 space-y-5">
             <Card>
               <CardHeader>
@@ -185,7 +177,7 @@ export default function AtendimentoDetailPage() {
                   <CardTitle>Dados do atendimento</CardTitle>
                   {status && (
                     <Badge variant={status.is_closed ? 'success' : status.is_lost ? 'danger' : status.generates_reminder ? 'warning' : 'default'}>
-                      {status.description}
+                      {status?.description ?? '—'}
                     </Badge>
                   )}
                 </div>
@@ -215,7 +207,6 @@ export default function AtendimentoDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Histórico de consultas */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -269,7 +260,6 @@ export default function AtendimentoDetailPage() {
             </Card>
           </div>
 
-          {/* Sidebar info */}
           <div className="space-y-4">
             {service.reminder_active && service.next_consultation_date && (
               <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
@@ -306,7 +296,6 @@ export default function AtendimentoDetailPage() {
         </div>
       </div>
 
-      {/* Modal nova consulta */}
       <Modal open={showAddCheck} onClose={() => setShowAddCheck(false)} title="Nova consulta de crédito" size="md">
         <form onSubmit={handleAddCheck} className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -349,6 +338,7 @@ export default function AtendimentoDetailPage() {
                 {checkFile ? checkFile.name : 'Clique para selecionar (JPG, PNG, PDF, WEBP)'}
               </span>
               <input
+                ref={fileInputRef}
                 type="file"
                 className="hidden"
                 accept=".jpg,.jpeg,.png,.pdf,.webp"
@@ -360,7 +350,7 @@ export default function AtendimentoDetailPage() {
             <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
               <Bell className="h-4 w-4 text-amber-600 shrink-0" />
               <p className="text-xs text-amber-700">
-                Lembrete de reconsulta para <strong>{new Date(nextConsultationDate(checkForm.check_date)).toLocaleDateString('pt-BR')}</strong> será criado automaticamente.
+                Lembrete de reconsulta para <strong>{new Date(nextConsultationDate(checkForm.check_date) + 'T12:00:00').toLocaleDateString('pt-BR')}</strong> será criado automaticamente.
               </p>
             </div>
           )}

@@ -9,10 +9,12 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft } from 'lucide-react'
+import { formatCPF } from '@/lib/utils'
+import { ArrowLeft, AlertTriangle } from 'lucide-react'
+import { format, parseISO } from 'date-fns'
 import type { Seller, Status, MotorcycleType, LossReason } from '@/types'
 
-const REQUIRES_LOSS_REASON = ['Venda perdida', 'Financiamento negado']
+const REQUIRES_LOSS_REASON = ['Venda perdida']
 
 export default function EditarAtendimentoPage() {
   const { id } = useParams<{ id: string }>()
@@ -24,6 +26,7 @@ export default function EditarAtendimentoPage() {
   const [motos, setMotos] = useState<MotorcycleType[]>([])
   const [lossReasons, setLossReasons] = useState<LossReason[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [originalStatus, setOriginalStatus] = useState<string>('')
 
   const [form, setForm] = useState({
     name: '', cpf: '', entry_date: '', seller_id: '',
@@ -42,16 +45,23 @@ export default function EditarAtendimentoPage() {
       ])
       if (svc.data) {
         const d = svc.data as any
+        let entryDate = ''
+        try {
+          entryDate = format(parseISO(d.entry_date), "yyyy-MM-dd'T'HH:mm")
+        } catch {
+          entryDate = d.entry_date?.slice(0, 16) ?? ''
+        }
         setForm({
           name: d.name ?? '',
           cpf: d.cpf ?? '',
-          entry_date: d.entry_date?.slice(0, 16) ?? '',
+          entry_date: entryDate,
           seller_id: d.seller_id ?? '',
           motorcycle_type_id: d.motorcycle_type_id ?? '',
           status_id: d.status_id ?? '',
           loss_reason_id: d.loss_reason_id ?? '',
           notes: d.notes ?? '',
         })
+        setOriginalStatus(d.status_id ?? '')
       }
       setSellers((s.data ?? []) as Seller[])
       setStatuses((st.data ?? []) as Status[])
@@ -63,7 +73,11 @@ export default function EditarAtendimentoPage() {
   }, [id])
 
   const selectedStatus = statuses.find((s) => s.id === form.status_id)
+  const originalStatusObj = statuses.find((s) => s.id === originalStatus)
   const requiresLoss = selectedStatus && REQUIRES_LOSS_REASON.includes(selectedStatus.description)
+
+  // Avisa se está tentando reverter uma venda fechada
+  const isRevertingClosed = originalStatusObj?.is_closed && !selectedStatus?.is_closed
 
   function set(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }))
@@ -81,7 +95,7 @@ export default function EditarAtendimentoPage() {
 
     setLoading(true)
     const supabase = createClient()
-    await supabase.from('customer_services').update({
+    const { error } = await supabase.from('customer_services').update({
       name: form.name.trim(),
       entry_date: form.entry_date,
       seller_id: form.seller_id || null,
@@ -90,6 +104,12 @@ export default function EditarAtendimentoPage() {
       loss_reason_id: requiresLoss ? (form.loss_reason_id || null) : null,
       notes: form.notes || null,
     }).eq('id', id)
+
+    if (error) {
+      setErrors({ _: 'Erro ao salvar. Tente novamente.' })
+      setLoading(false)
+      return
+    }
 
     router.push(`/atendimentos/${id}`)
   }
@@ -108,12 +128,29 @@ export default function EditarAtendimentoPage() {
       />
       <div className="flex-1 overflow-y-auto p-6">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-6">
+
+          {errors._ && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
+              <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+              <p className="text-sm text-red-700">{errors._}</p>
+            </div>
+          )}
+
+          {isRevertingClosed && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-700">
+                <strong>Atenção:</strong> você está alterando um atendimento com status <strong>Venda fechada</strong>. Confirme que esta alteração é intencional.
+              </p>
+            </div>
+          )}
+
           <Card>
             <CardHeader><CardTitle>Dados do atendimento</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input label="Nome completo" required value={form.name} onChange={(e) => set('name', e.target.value)} error={errors.name} />
-                <Input label="CPF" value={form.cpf} disabled hint="CPF não pode ser alterado" />
+                <Input label="CPF" value={formatCPF(form.cpf)} disabled hint="CPF não pode ser alterado" />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input label="Data de entrada" type="datetime-local" required value={form.entry_date} onChange={(e) => set('entry_date', e.target.value)} />

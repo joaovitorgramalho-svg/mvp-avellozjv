@@ -9,13 +9,14 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCPF, nextConsultationDate } from '@/lib/utils'
-import { ArrowLeft, AlertTriangle } from 'lucide-react'
+import { formatCPF, nextConsultationDate, validateCPF } from '@/lib/utils'
+import { ArrowLeft, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import type { Seller, Status, MotorcycleType, LossReason } from '@/types'
 
-const REQUIRES_CREDIT_STATUSES = ['Consulta aprovada', 'Consulta com restrição', 'Financiamento negado']
+const REQUIRES_CREDIT_STATUSES = ['Consulta com restrição', 'Financiamento negado']
+const REQUIRES_SALE_FOLLOWUP = ['Consulta aprovada']
 const GENERATES_REMINDER = ['Consulta com restrição', 'Financiamento negado']
-const REQUIRES_LOSS_REASON = ['Venda perdida', 'Financiamento negado']
+const REQUIRES_LOSS_REASON = ['Venda perdida']
 
 export default function NovoAtendimentoPage() {
   const router = useRouter()
@@ -36,10 +37,12 @@ export default function NovoAtendimentoPage() {
     status_id: '',
     loss_reason_id: '',
     notes: '',
-    // consulta
+    // consulta de crédito (restrição/negado)
     check_date: '',
     check_result: '',
     check_notes: '',
+    // desfecho da venda aprovada
+    sale_closed: '',
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -63,6 +66,7 @@ export default function NovoAtendimentoPage() {
 
   const selectedStatus = statuses.find((s) => s.id === form.status_id)
   const requiresCredit = selectedStatus && REQUIRES_CREDIT_STATUSES.includes(selectedStatus.description)
+  const requiresSaleFollowup = selectedStatus && REQUIRES_SALE_FOLLOWUP.includes(selectedStatus.description)
   const requiresLoss = selectedStatus && REQUIRES_LOSS_REASON.includes(selectedStatus.description)
 
   async function checkCPF(cpf: string) {
@@ -91,12 +95,17 @@ export default function NovoAtendimentoPage() {
   function validate() {
     const e: Record<string, string> = {}
     if (!form.name.trim()) e.name = 'Nome obrigatório'
-    if (form.cpf.replace(/\D/g, '').length !== 11) e.cpf = 'CPF inválido'
+    const cleanCPF = form.cpf.replace(/\D/g, '')
+    if (!validateCPF(cleanCPF)) e.cpf = 'CPF inválido'
     if (!form.seller_id) e.seller_id = 'Vendedor obrigatório'
     if (!form.status_id) e.status_id = 'Status obrigatório'
     if (requiresCredit) {
       if (!form.check_date) e.check_date = 'Data da consulta obrigatória'
       if (!form.check_result) e.check_result = 'Resultado da consulta obrigatório'
+    }
+    if (requiresSaleFollowup) {
+      if (!form.sale_closed) e.sale_closed = 'Informe o desfecho da venda'
+      if (form.sale_closed === 'no' && !form.loss_reason_id) e.loss_reason_id = 'Motivo da perda obrigatório'
     }
     if (requiresLoss && !form.loss_reason_id) e.loss_reason_id = 'Motivo da perda obrigatório'
     return e
@@ -113,6 +122,21 @@ export default function NovoAtendimentoPage() {
     const generatesReminder = selectedStatus && GENERATES_REMINDER.includes(selectedStatus.description)
     const nextDate = generatesReminder && form.check_date ? nextConsultationDate(form.check_date) : null
 
+    // Quando "Consulta aprovada", o status final depende do desfecho
+    let finalStatusId = form.status_id
+    let finalLossReasonId: string | null = requiresLoss ? (form.loss_reason_id || null) : null
+
+    if (requiresSaleFollowup) {
+      if (form.sale_closed === 'yes') {
+        const closedStatus = statuses.find((s) => s.is_closed)
+        if (closedStatus) finalStatusId = closedStatus.id
+      } else if (form.sale_closed === 'no') {
+        const lostStatus = statuses.find((s) => s.is_lost && !s.generates_reminder)
+        if (lostStatus) finalStatusId = lostStatus.id
+        finalLossReasonId = form.loss_reason_id || null
+      }
+    }
+
     const { data: service, error } = await supabase
       .from('customer_services')
       .insert({
@@ -121,8 +145,8 @@ export default function NovoAtendimentoPage() {
         entry_date: form.entry_date,
         seller_id: form.seller_id || null,
         motorcycle_type_id: form.motorcycle_type_id || null,
-        status_id: form.status_id || null,
-        loss_reason_id: requiresLoss ? (form.loss_reason_id || null) : null,
+        status_id: finalStatusId || null,
+        loss_reason_id: finalLossReasonId,
         notes: form.notes || null,
         reminder_active: !!nextDate,
         next_consultation_date: nextDate,
@@ -130,7 +154,11 @@ export default function NovoAtendimentoPage() {
       .select()
       .single()
 
-    if (error || !service) { setLoading(false); return }
+    if (error || !service) {
+      setErrors({ _: 'Erro ao salvar atendimento. Tente novamente.' })
+      setLoading(false)
+      return
+    }
 
     if (requiresCredit && form.check_date && form.check_result) {
       await supabase.from('credit_checks').insert({
@@ -168,6 +196,13 @@ export default function NovoAtendimentoPage() {
       />
       <div className="flex-1 overflow-y-auto p-6">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-6">
+
+          {errors._ && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
+              <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+              <p className="text-sm text-red-700">{errors._}</p>
+            </div>
+          )}
 
           <Card>
             <CardHeader><CardTitle>Dados do cliente</CardTitle></CardHeader>
@@ -264,6 +299,55 @@ export default function NovoAtendimentoPage() {
             </CardContent>
           </Card>
 
+          {/* Desfecho para consulta aprovada */}
+          {requiresSaleFollowup && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                  <CardTitle>Desfecho da venda</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-slate-600">
+                  A consulta de crédito foi aprovada. A venda foi concluída?
+                </p>
+                <Select
+                  label="A venda foi fechada?"
+                  required
+                  value={form.sale_closed}
+                  onChange={(e) => set('sale_closed', e.target.value)}
+                  placeholder="Selecione"
+                  options={[
+                    { value: 'yes', label: 'Sim — venda fechada' },
+                    { value: 'no', label: 'Não — venda não fechou' },
+                  ]}
+                  error={errors.sale_closed}
+                />
+                {form.sale_closed === 'yes' && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <p className="text-sm text-emerald-700">
+                      O atendimento será salvo como <strong>Venda fechada</strong>.
+                    </p>
+                  </div>
+                )}
+                {form.sale_closed === 'no' && (
+                  <Select
+                    label="Motivo da perda"
+                    required
+                    value={form.loss_reason_id}
+                    onChange={(e) => set('loss_reason_id', e.target.value)}
+                    placeholder="Por que a venda não fechou?"
+                    options={lossReasons.map((l) => ({ value: l.id, label: l.description }))}
+                    error={errors.loss_reason_id}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Consulta de crédito (restrição ou negado) */}
           {requiresCredit && (
             <Card>
               <CardHeader><CardTitle>Consulta de crédito</CardTitle></CardHeader>
@@ -284,7 +368,6 @@ export default function NovoAtendimentoPage() {
                     onChange={(e) => set('check_result', e.target.value)}
                     placeholder="Selecione o resultado"
                     options={[
-                      { value: 'approved', label: 'Aprovado' },
                       { value: 'restriction', label: 'Restrição' },
                       { value: 'denied', label: 'Negado' },
                       { value: 'pending', label: 'Pendente' },
@@ -303,7 +386,7 @@ export default function NovoAtendimentoPage() {
                     <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
                     <p className="text-sm text-amber-700">
                       Lembrete de reconsulta será criado automaticamente para{' '}
-                      <strong>{new Date(nextConsultationDate(form.check_date)).toLocaleDateString('pt-BR')}</strong>
+                      <strong>{new Date(nextConsultationDate(form.check_date) + 'T12:00:00').toLocaleDateString('pt-BR')}</strong>
                     </p>
                   </div>
                 )}

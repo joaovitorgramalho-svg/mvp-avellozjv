@@ -1,8 +1,10 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard,
   ClipboardList,
@@ -28,12 +30,18 @@ const nav = [
   { label: 'Motivos de Perda', href: '/motivos-perda', icon: AlertCircle },
 ]
 
-interface SidebarProps {
-  pendingReminders?: number
-}
-
-export function Sidebar({ pendingReminders = 0 }: SidebarProps) {
+export function Sidebar() {
   const pathname = usePathname()
+  const [pendingCount, setPendingCount] = useState(0)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('reminders')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending')
+      .then(({ count }) => setPendingCount(count ?? 0))
+  }, [pathname])
 
   return (
     <aside className="w-60 shrink-0 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0">
@@ -73,9 +81,9 @@ export function Sidebar({ pendingReminders = 0 }: SidebarProps) {
             >
               <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600')} />
               <span className="flex-1">{item.label}</span>
-              {item.badge && pendingReminders > 0 && (
+              {item.badge && pendingCount > 0 && (
                 <span className="h-5 min-w-5 px-1 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center">
-                  {pendingReminders > 99 ? '99+' : pendingReminders}
+                  {pendingCount > 99 ? '99+' : pendingCount}
                 </span>
               )}
               {isActive && <ChevronRight className="h-3.5 w-3.5 text-indigo-400" />}
