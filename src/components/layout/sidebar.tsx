@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -15,6 +15,7 @@ import {
   AlertCircle,
   BarChart2,
   ChevronRight,
+  LogOut,
 } from 'lucide-react'
 
 const nav = [
@@ -32,6 +33,7 @@ const nav = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [pendingCount, setPendingCount] = useState(0)
 
   useEffect(() => {
@@ -42,6 +44,13 @@ export function Sidebar() {
       .eq('status', 'pending')
       .then(({ count }) => setPendingCount(count ?? 0))
   }, [pathname])
+
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
 
   return (
     <aside className="w-60 shrink-0 bg-white border-r border-slate-200 flex flex-col h-screen sticky top-0">
@@ -93,7 +102,14 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-slate-100">
+      <div className="px-4 py-3 border-t border-slate-100 space-y-2">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors"
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          Sair
+        </button>
         <p className="text-xs text-slate-400 text-center">MVP Avelloz v1.0</p>
       </div>
     </aside>
