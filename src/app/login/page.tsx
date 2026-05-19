@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createBrowserClient } from '@supabase/ssr'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Bike, AlertTriangle, CheckCircle } from 'lucide-react'
@@ -34,6 +34,13 @@ export default function LoginPage() {
     resetForm()
   }
 
+  function authClient() {
+    return createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    )
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim() || !password.trim()) {
@@ -42,7 +49,7 @@ export default function LoginPage() {
     }
     setLoading(true)
     setError('')
-    const supabase = createClient()
+    const supabase = authClient()
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
     if (authError) {
       setError('E-mail ou senha incorretos')
@@ -69,7 +76,7 @@ export default function LoginPage() {
     }
     setLoading(true)
     setError('')
-    const supabase = createClient()
+    const supabase = authClient()
     const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
