@@ -9,28 +9,25 @@ import {
   Bell,
   Users,
   FileText,
-  CheckCircle,
   TrendingUp,
-  AlertCircle,
   ClipboardList,
   ChevronDown,
-  Bike,
-  LogIn,
+  AlertCircle,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 
 export default function LandingPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    if (!email.trim() || !password.trim()) {
-      setError('Preencha e-mail e senha')
-      return
-    }
+    if (!email.trim() || !password.trim()) { setError('Preencha e-mail e senha'); return }
     setLoading(true)
     setError('')
     const supabase = createBrowserClient(
@@ -38,251 +35,164 @@ export default function LandingPage() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     )
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
-    if (authError) {
-      setError('E-mail ou senha incorretos')
-      setLoading(false)
-      return
-    }
+    if (authError) { setError('E-mail ou senha incorretos'); setLoading(false); return }
     router.push('/dashboard')
     router.refresh()
   }
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans">
+    <div className="min-h-screen bg-[#0f0f13] text-white font-sans">
 
       {/* NAV */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-              <Bike className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-lg font-bold text-indigo-600 tracking-tight">Avelloz</span>
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0f0f13]/90 backdrop-blur-md border-b border-white/5">
+        <div className="max-w-6xl mx-auto px-5 flex items-center justify-between h-14">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl font-black tracking-tight text-white">AVELLOZ</span>
+            <span className="hidden sm:block text-[10px] font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full uppercase tracking-widest">
+              Gestão
+            </span>
           </div>
           <a
             href="#acesso"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            className="text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg transition-colors"
           >
-            Acessar sistema
+            Acessar
           </a>
         </div>
       </nav>
 
-      {/* HERO + LOGIN */}
-      <section className="pt-28 pb-20 px-4 sm:px-6 bg-gradient-to-b from-indigo-50 to-white">
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
-
-          {/* Texto */}
-          <div>
-            <span className="inline-block bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1 rounded-full mb-6 uppercase tracking-wider">
-              Gestão comercial para concessionárias de motos
-            </span>
-            <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-900 leading-tight mb-6">
-              Controle total do seu{' '}
-              <span className="text-indigo-600">funil de vendas</span>
-            </h1>
-            <p className="text-lg text-slate-600 leading-relaxed mb-8">
-              Do cliente que entrou na loja até a moto saindo pela porta — atendimentos, consultas de crédito e lembretes em um só lugar.
-            </p>
-            <div className="flex flex-col gap-3 text-sm text-slate-600">
-              {[
-                'Dashboard com métricas em tempo real',
-                'Lembretes automáticos de reconsulta de crédito',
-                'Histórico completo de cada cliente',
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-indigo-500 shrink-0" />
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Card de Login */}
-          <div id="acesso" className="bg-white border border-slate-200 rounded-2xl shadow-xl p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center">
-                <LogIn className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className="font-bold text-slate-900 leading-none">Acesse sua conta</p>
-                <p className="text-xs text-slate-400 mt-0.5">Plataforma Avelloz</p>
-              </div>
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 mb-4">
-                <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setError('') }}
-                  placeholder="seu@email.com"
-                  autoComplete="email"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => { setPassword(e.target.value); setError('') }}
-                  placeholder="Sua senha"
-                  autoComplete="current-password"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors text-sm"
-              >
-                {loading ? 'Entrando...' : 'Entrar'}
-              </button>
-            </form>
-
-            <div className="mt-5 pt-5 border-t border-slate-100">
-              <p className="text-xs text-slate-400 text-center mb-3">Acesso rápido para demonstração</p>
-              <button
-                type="button"
-                onClick={() => { setEmail('demo@avelloz.com.br'); setPassword('demo1234'); setError('') }}
-                className="w-full text-sm text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg py-2 px-3 transition-colors"
-              >
-                Entrar como Demo
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* PROBLEMA / SOLUÇÃO */}
-      <section className="py-20 px-4 sm:px-6 bg-slate-900 text-white">
+      {/* HERO */}
+      <section className="pt-24 sm:pt-28 pb-0 px-5">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-extrabold mb-4">
-              Situações que toda concessionária conhece
-            </h2>
-            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              O Avelloz resolve os gargalos mais comuns do dia a dia comercial.
+
+          {/* Tagline */}
+          <div className="text-center mb-10 sm:mb-14">
+            <p className="text-indigo-400 text-xs font-bold uppercase tracking-[0.2em] mb-4">
+              Controle de atendimento · Financiamento · Retorno de clientes
+            </p>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] tracking-tight mb-5">
+              Sua concessionária<br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">
+                no controle total
+              </span>
+            </h1>
+            <p className="text-slate-400 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
+              Do cliente que entrou na loja até a moto saindo pela porta — funil de vendas, crédito e lembretes em um só lugar.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="space-y-6">
-              <div className="bg-red-900/30 border border-red-700/40 rounded-xl p-6">
-                <AlertCircle className="w-8 h-8 text-red-400 mb-3" />
-                <h3 className="font-bold text-lg text-red-300 mb-2">Cliente some sem fechar</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  Crédito aprovado, cliente animado — e três dias depois sumiu. Vendedor não fez o follow-up.
-                </p>
-              </div>
-              <div className="bg-indigo-900/40 border border-indigo-600/40 rounded-xl p-6">
-                <CheckCircle className="w-8 h-8 text-indigo-400 mb-3" />
-                <h3 className="font-bold text-lg text-indigo-300 mb-2">Lembretes automáticos</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  O sistema avisa o vendedor quando o prazo do crédito vence — antes do cliente desaparecer.
-                </p>
-              </div>
-            </div>
+          {/* Card de login centralizado */}
+          <div id="acesso" className="max-w-md mx-auto">
+            <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-7 backdrop-blur-sm">
+              <p className="text-sm font-semibold text-white mb-5">Entrar na plataforma</p>
 
-            <div className="space-y-6">
-              <div className="bg-red-900/30 border border-red-700/40 rounded-xl p-6">
-                <AlertCircle className="w-8 h-8 text-red-400 mb-3" />
-                <h3 className="font-bold text-lg text-red-300 mb-2">Gerente sem visão do funil</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  Quantos clientes entraram essa semana? Qual vendedor está convertendo mais? Ninguém sabe.
-                </p>
-              </div>
-              <div className="bg-indigo-900/40 border border-indigo-600/40 rounded-xl p-6">
-                <CheckCircle className="w-8 h-8 text-indigo-400 mb-3" />
-                <h3 className="font-bold text-lg text-indigo-300 mb-2">Dashboard em tempo real</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  Taxa de conversão, aprovações e performance por vendedor — visível de qualquer lugar.
-                </p>
-              </div>
-            </div>
+              {error && (
+                <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 mb-4">
+                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                  <p className="text-sm text-red-300">{error}</p>
+                </div>
+              )}
 
-            <div className="space-y-6">
-              <div className="bg-red-900/30 border border-red-700/40 rounded-xl p-6">
-                <AlertCircle className="w-8 h-8 text-red-400 mb-3" />
-                <h3 className="font-bold text-lg text-red-300 mb-2">Histórico perdido</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  Vendedor saiu e levou o histórico no WhatsApp. Caderno de anotações sumiu.
-                </p>
-              </div>
-              <div className="bg-indigo-900/40 border border-indigo-600/40 rounded-xl p-6">
-                <CheckCircle className="w-8 h-8 text-indigo-400 mb-3" />
-                <h3 className="font-bold text-lg text-indigo-300 mb-2">Histórico centralizado</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  Todo atendimento e resultado registrado no sistema. O histórico é da loja, não do vendedor.
-                </p>
+              <form onSubmit={handleLogin} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5">E-mail</label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setError('') }}
+                    placeholder="seu@email.com"
+                    autoComplete="email"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5">Senha</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={password}
+                      onChange={(e) => { setPassword(e.target.value); setError('') }}
+                      placeholder="••••••••"
+                      autoComplete="current-password"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-lg transition-colors text-sm mt-1"
+                >
+                  {loading ? 'Entrando...' : 'Entrar'}
+                </button>
+              </form>
+
+              <div className="mt-4 pt-4 border-t border-white/5">
+                <p className="text-[11px] text-slate-600 text-center mb-2.5">Acesso demo</p>
+                <button
+                  type="button"
+                  onClick={() => { setEmail('demo@avelloz.com.br'); setPassword('demo1234'); setError('') }}
+                  className="w-full text-sm text-slate-400 hover:text-slate-200 bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 rounded-lg py-2 transition-all"
+                >
+                  Entrar como Demo
+                </button>
               </div>
             </div>
           </div>
+
+          {/* Métricas decorativas */}
+          <div className="grid grid-cols-3 gap-3 sm:gap-6 max-w-md mx-auto mt-8 pb-16">
+            {[
+              { value: '21 dias', label: 'alerta de reconsulta' },
+              { value: '100%', label: 'histórico centralizado' },
+              { value: 'Real-time', label: 'dashboard ao vivo' },
+            ].map((m) => (
+              <div key={m.label} className="text-center">
+                <p className="text-lg sm:text-xl font-black text-white">{m.value}</p>
+                <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">{m.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
+
+      {/* DIVISOR */}
+      <div className="border-t border-white/5" />
 
       {/* FUNCIONALIDADES */}
-      <section className="py-20 px-4 sm:px-6 bg-white">
+      <section className="py-16 sm:py-20 px-5 bg-[#0f0f13]">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4">
-              Tudo que sua loja precisa, em um só sistema
+          <div className="mb-10 sm:mb-12">
+            <p className="text-indigo-400 text-xs font-bold uppercase tracking-[0.2em] mb-3">Funcionalidades</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-white">
+              Tudo que sua loja precisa
             </h2>
-            <p className="text-slate-500 text-lg max-w-2xl mx-auto">
-              Desenvolvido especificamente para o dia a dia de concessionárias de motos.
-            </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {[
-              {
-                icon: <BarChart3 className="w-7 h-7 text-indigo-600" />,
-                title: 'Dashboard em tempo real',
-                desc: 'Taxa de conversão, clientes em aberto, aprovações e vendas fechadas. Visão completa do funil.',
-              },
-              {
-                icon: <CreditCard className="w-7 h-7 text-indigo-600" />,
-                title: 'Consultas de crédito',
-                desc: 'Registre o resultado de cada consulta (aprovado, com restrição, negado) e acompanhe o histórico por cliente.',
-              },
-              {
-                icon: <Bell className="w-7 h-7 text-indigo-600" />,
-                title: 'Lembretes de reconsulta',
-                desc: 'Quando o prazo do crédito aprovado está vencendo, o sistema avisa o vendedor automaticamente.',
-              },
-              {
-                icon: <Users className="w-7 h-7 text-indigo-600" />,
-                title: 'Gestão de vendedores',
-                desc: 'Veja quantos atendimentos, consultas e vendas cada vendedor realizou. Identifique gargalos rapidamente.',
-              },
-              {
-                icon: <FileText className="w-7 h-7 text-indigo-600" />,
-                title: 'Relatórios exportáveis',
-                desc: 'Exporte dados de atendimentos, conversões e resultados para análise ou apresentação.',
-              },
-              {
-                icon: <ClipboardList className="w-7 h-7 text-indigo-600" />,
-                title: 'Controle de status do funil',
-                desc: 'Cada cliente tem um status claro: em análise, aprovado, fechado ou perdido — com motivo registrado.',
-              },
-            ].map((f, i) => (
-              <div key={i} className="bg-slate-50 border border-slate-100 rounded-2xl p-6 hover:border-indigo-200 hover:shadow-md transition-all">
-                <div className="bg-indigo-50 rounded-xl w-12 h-12 flex items-center justify-center mb-4">
-                  {f.icon}
+              { icon: BarChart3, title: 'Dashboard ao vivo', desc: 'Taxa de conversão, aprovações e vendas. Funil completo sem planilha.' },
+              { icon: CreditCard, title: 'Consultas de crédito', desc: 'Aprovado, com restrição ou negado — histórico completo por cliente.' },
+              { icon: Bell, title: 'Lembretes de reconsulta', desc: 'Alerta automático em 21 dias quando o crédito vence.' },
+              { icon: Users, title: 'Gestão de vendedores', desc: 'Performance individual: atendimentos, consultas e conversões.' },
+              { icon: FileText, title: 'Relatórios', desc: 'Exporte dados de atendimentos e resultados para análise.' },
+              { icon: ClipboardList, title: 'Funil com status', desc: 'Em análise, aprovado, fechado ou perdido — com motivo registrado.' },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="group bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-indigo-500/30 rounded-xl p-5 transition-all cursor-default">
+                <div className="w-9 h-9 rounded-lg bg-indigo-500/10 flex items-center justify-center mb-4">
+                  <Icon className="w-4 h-4 text-indigo-400" />
                 </div>
-                <h3 className="font-bold text-slate-900 text-lg mb-2">{f.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
+                <h3 className="font-bold text-white text-sm mb-1.5">{title}</h3>
+                <p className="text-slate-500 text-xs leading-relaxed">{desc}</p>
               </div>
             ))}
           </div>
@@ -290,51 +200,29 @@ export default function LandingPage() {
       </section>
 
       {/* COMO FUNCIONA */}
-      <section id="como-funciona" className="py-20 px-4 sm:px-6 bg-indigo-50">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4">
+      <section className="py-16 sm:py-20 px-5 bg-[#0c0c10]">
+        <div className="max-w-6xl mx-auto">
+          <div className="mb-10 sm:mb-12">
+            <p className="text-indigo-400 text-xs font-bold uppercase tracking-[0.2em] mb-3">Fluxo</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-white">
               Como funciona na prática
             </h2>
-            <p className="text-slate-500 text-lg max-w-xl mx-auto">
-              Do cliente entrando na loja até o dashboard atualizado — em menos de dois minutos.
-            </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {[
-              {
-                step: '1',
-                icon: <Users className="w-6 h-6 text-indigo-600" />,
-                title: 'Cliente entra na loja',
-                desc: 'O vendedor cadastra o cliente em segundos: nome, telefone e interesse.',
-              },
-              {
-                step: '2',
-                icon: <CreditCard className="w-6 h-6 text-indigo-600" />,
-                title: 'Consulta de crédito',
-                desc: 'Registre o resultado na financeira: aprovado, com restrição ou negado.',
-              },
-              {
-                step: '3',
-                icon: <TrendingUp className="w-6 h-6 text-indigo-600" />,
-                title: 'Acompanha no funil',
-                desc: 'O status avança conforme a negociação: em análise, aprovado, fechado ou perdido.',
-              },
-              {
-                step: '4',
-                icon: <BarChart3 className="w-6 h-6 text-indigo-600" />,
-                title: 'Dashboard atualizado',
-                desc: 'O gerente vê tudo em tempo real: conversão, aprovações e volume por vendedor.',
-              },
-            ].map((s, i) => (
-              <div key={i} className="relative bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-                <div className="absolute -top-4 left-6 bg-indigo-600 text-white text-sm font-bold w-8 h-8 rounded-full flex items-center justify-center shadow">
-                  {s.step}
+              { step: '01', icon: Users, title: 'Cliente entra', desc: 'Vendedor cadastra nome, telefone e interesse em segundos.' },
+              { step: '02', icon: CreditCard, title: 'Consulta de crédito', desc: 'Resultado registrado: aprovado, restrição ou negado.' },
+              { step: '03', icon: TrendingUp, title: 'Avança no funil', desc: 'Status atualizado em cada etapa da negociação.' },
+              { step: '04', icon: BarChart3, title: 'Dashboard atualizado', desc: 'Gerente vê conversão e performance em tempo real.' },
+            ].map(({ step, icon: Icon, title, desc }) => (
+              <div key={step} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 relative overflow-hidden">
+                <p className="absolute top-4 right-5 text-4xl font-black text-white/[0.04] select-none">{step}</p>
+                <div className="w-9 h-9 rounded-lg bg-indigo-500/10 flex items-center justify-center mb-4">
+                  <Icon className="w-4 h-4 text-indigo-400" />
                 </div>
-                <div className="mt-4 mb-3">{s.icon}</div>
-                <h3 className="font-bold text-slate-900 mb-2">{s.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed">{s.desc}</p>
+                <h3 className="font-bold text-white text-sm mb-1.5">{title}</h3>
+                <p className="text-slate-500 text-xs leading-relaxed">{desc}</p>
               </div>
             ))}
           </div>
@@ -342,43 +230,27 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="py-20 px-4 sm:px-6 bg-white">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-4">
-              Perguntas frequentes
-            </h2>
+      <section className="py-16 sm:py-20 px-5 bg-[#0f0f13]">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-10">
+            <p className="text-indigo-400 text-xs font-bold uppercase tracking-[0.2em] mb-3">Dúvidas</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-white">Perguntas frequentes</h2>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-2">
             {[
-              {
-                q: 'Precisa instalar algum programa?',
-                a: 'Não. O Avelloz é 100% web — funciona direto no navegador, sem instalação. Basta acessar pelo computador, tablet ou celular.',
-              },
-              {
-                q: 'Meus dados ficam seguros?',
-                a: 'Sim. Os dados são armazenados em infraestrutura de nível enterprise com criptografia e backups automáticos.',
-              },
-              {
-                q: 'Funciona no celular?',
-                a: 'Sim. O sistema é totalmente responsivo — vendedor pode cadastrar atendimento pelo celular enquanto está com o cliente.',
-              },
-              {
-                q: 'Posso exportar meus dados?',
-                a: 'Sim. É possível exportar relatórios de atendimentos, consultas de crédito e performance de vendedores.',
-              },
-              {
-                q: 'Quanto tempo leva para começar a usar?',
-                a: 'Um dia, no máximo. Cadastra a loja, adiciona os vendedores e começa a registrar atendimentos. Sem treinamento longo.',
-              },
+              { q: 'Precisa instalar algum programa?', a: 'Não. O Avelloz é 100% web — funciona no navegador do computador, tablet ou celular.' },
+              { q: 'Funciona no celular?', a: 'Sim. Layout responsivo para vendedor cadastrar atendimento pelo celular enquanto atende o cliente.' },
+              { q: 'Meus dados ficam seguros?', a: 'Sim. Infraestrutura com criptografia e backups automáticos. Nenhum dado é compartilhado com terceiros.' },
+              { q: 'Posso exportar meus dados?', a: 'Sim. Relatórios de atendimentos, consultas de crédito e performance de vendedores são exportáveis.' },
+              { q: 'Quanto tempo leva para começar?', a: 'Um dia no máximo. Cadastra a loja, adiciona vendedores e começa a registrar. Sem treinamento longo.' },
             ].map((item, i) => (
-              <details key={i} className="group border border-slate-200 rounded-xl overflow-hidden">
-                <summary className="flex items-center justify-between cursor-pointer px-6 py-5 font-semibold text-slate-900 hover:bg-slate-50 transition-colors list-none">
+              <details key={i} className="group bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden">
+                <summary className="flex items-center justify-between cursor-pointer px-5 py-4 text-sm font-semibold text-white hover:text-indigo-300 transition-colors list-none">
                   {item.q}
-                  <ChevronDown className="w-5 h-5 text-slate-400 group-open:rotate-180 transition-transform flex-shrink-0" />
+                  <ChevronDown className="w-4 h-4 text-slate-500 group-open:rotate-180 transition-transform shrink-0 ml-3" />
                 </summary>
-                <div className="px-6 pb-5 text-slate-500 text-sm leading-relaxed border-t border-slate-100 pt-4">
+                <div className="px-5 pb-4 text-slate-400 text-sm leading-relaxed border-t border-white/[0.04] pt-3">
                   {item.a}
                 </div>
               </details>
@@ -387,20 +259,26 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="bg-slate-900 text-slate-400 py-12 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div>
-            <p className="text-white font-bold text-lg mb-1">Avelloz</p>
-            <p className="text-sm">Gestão comercial para concessionárias de motos</p>
-          </div>
+      {/* CTA FINAL */}
+      <section className="py-14 sm:py-16 px-5 bg-[#0c0c10] border-t border-white/5">
+        <div className="max-w-md mx-auto text-center">
+          <h2 className="text-xl sm:text-2xl font-black text-white mb-2">Pronto para acessar?</h2>
+          <p className="text-slate-500 text-sm mb-6">Use as credenciais fornecidas para entrar na plataforma.</p>
           <a
             href="#acesso"
-            className="text-sm hover:text-white transition-colors"
+            className="inline-block bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-8 py-3 rounded-xl text-sm transition-colors"
           >
-            Acessar sistema
+            Ir para o login
           </a>
-          <p className="text-xs text-slate-600">© 2026 Avelloz. Todos os direitos reservados.</p>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="bg-[#09090c] border-t border-white/5 py-8 px-5">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="font-black text-white tracking-tight">AVELLOZ</p>
+          <p className="text-xs text-slate-600 order-last sm:order-none">Gestão comercial para concessionárias de motos</p>
+          <p className="text-xs text-slate-700">© 2026 Avelloz</p>
         </div>
       </footer>
 
