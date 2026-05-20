@@ -19,25 +19,67 @@ import {
 
 export default function LandingPage() {
   const router = useRouter()
+  const [mode, setMode] = useState<'login' | 'cadastro'>('login')
+  const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  function switchMode(m: 'login' | 'cadastro') {
+    setMode(m)
+    setError('')
+    setSuccess('')
+    setNome('')
+    setPassword('')
+    setConfirmPassword('')
+  }
+
+  function supabase() {
+    return createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    )
+  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     if (!email.trim() || !password.trim()) { setError('Preencha e-mail e senha'); return }
     setLoading(true)
     setError('')
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    )
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const { error: authError } = await supabase().auth.signInWithPassword({ email, password })
     if (authError) { setError('E-mail ou senha incorretos'); setLoading(false); return }
     router.push('/dashboard')
     router.refresh()
+  }
+
+  async function handleCadastro(e: React.FormEvent) {
+    e.preventDefault()
+    if (!nome.trim() || !email.trim() || !password.trim()) { setError('Preencha todos os campos'); return }
+    if (password !== confirmPassword) { setError('As senhas não coincidem'); return }
+    if (password.length < 6) { setError('Senha deve ter mínimo 6 caracteres'); return }
+    setLoading(true)
+    setError('')
+    const { data, error: authError } = await supabase().auth.signUp({
+      email,
+      password,
+      options: { data: { nome } },
+    })
+    if (authError) {
+      setError(authError.message === 'User already registered' ? 'E-mail já cadastrado' : 'Erro ao criar conta. Tente novamente.')
+      setLoading(false)
+      return
+    }
+    if (data.session) {
+      router.push('/dashboard')
+      router.refresh()
+      return
+    }
+    setSuccess('Conta criada! Verifique seu e-mail para confirmar.')
+    setLoading(false)
   }
 
   return (
@@ -81,71 +123,117 @@ export default function LandingPage() {
             </p>
           </div>
 
-          {/* Card de login centralizado */}
+          {/* Card de login/cadastro centralizado */}
           <div id="acesso" className="max-w-md mx-auto">
             <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-7 backdrop-blur-sm">
-              <p className="text-sm font-semibold text-white mb-5">Entrar na plataforma</p>
 
+              {/* Abas */}
+              <div className="flex bg-white/5 rounded-lg p-1 mb-5">
+                {(['login', 'cadastro'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => switchMode(m)}
+                    className={`flex-1 text-sm font-semibold py-1.5 rounded-md transition-all ${
+                      mode === m ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {m === 'login' ? 'Entrar' : 'Criar conta'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Erro / Sucesso */}
               {error && (
                 <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5 mb-4">
                   <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
                   <p className="text-sm text-red-300">{error}</p>
                 </div>
               )}
-
-              <form onSubmit={handleLogin} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5">E-mail</label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); setError('') }}
-                    placeholder="seu@email.com"
-                    autoComplete="email"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
-                  />
+              {success && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2.5 mb-4">
+                  <p className="text-sm text-emerald-300">{success}</p>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1.5">Senha</label>
-                  <div className="relative">
+              )}
+
+              {/* Login */}
+              {mode === 'login' && (
+                <form onSubmit={handleLogin} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5">E-mail</label>
                     <input
-                      type={showPassword ? 'text' : 'password'}
+                      type="email"
                       required
-                      value={password}
-                      onChange={(e) => { setPassword(e.target.value); setError('') }}
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all pr-10"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setError('') }}
+                      placeholder="seu@email.com"
+                      autoComplete="email"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
                   </div>
-                </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-lg transition-colors text-sm mt-1"
-                >
-                  {loading ? 'Entrando...' : 'Entrar'}
-                </button>
-              </form>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5">Senha</label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={password}
+                        onChange={(e) => { setPassword(e.target.value); setError('') }}
+                        placeholder="••••••••"
+                        autoComplete="current-password"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all pr-10"
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-lg transition-colors text-sm mt-1">
+                    {loading ? 'Entrando...' : 'Entrar'}
+                  </button>
+                </form>
+              )}
 
-              <div className="mt-4 pt-4 border-t border-white/5">
-                <p className="text-[11px] text-slate-600 text-center mb-2.5">Acesso demo</p>
-                <button
-                  type="button"
-                  onClick={() => { setEmail('demo@avelloz.com.br'); setPassword('demo1234'); setError('') }}
-                  className="w-full text-sm text-slate-400 hover:text-slate-200 bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 rounded-lg py-2 transition-all"
-                >
-                  Entrar como Demo
+              {/* Cadastro */}
+              {mode === 'cadastro' && !success && (
+                <form onSubmit={handleCadastro} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5">Nome completo</label>
+                    <input type="text" required value={nome} onChange={(e) => { setNome(e.target.value); setError('') }} placeholder="Seu nome" autoComplete="name"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5">E-mail</label>
+                    <input type="email" required value={email} onChange={(e) => { setEmail(e.target.value); setError('') }} placeholder="seu@email.com" autoComplete="email"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5">Senha</label>
+                    <div className="relative">
+                      <input type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => { setPassword(e.target.value); setError('') }} placeholder="Mínimo 6 caracteres" autoComplete="new-password"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all pr-10" />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5">Confirmar senha</label>
+                    <input type="password" required value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); setError('') }} placeholder="Repita a senha" autoComplete="new-password"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all" />
+                  </div>
+                  <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-lg transition-colors text-sm mt-1">
+                    {loading ? 'Criando conta...' : 'Criar conta'}
+                  </button>
+                </form>
+              )}
+
+              {/* Pós-cadastro */}
+              {mode === 'cadastro' && success && (
+                <button type="button" onClick={() => switchMode('login')} className="w-full text-sm text-indigo-400 hover:text-indigo-300 text-center mt-2 transition-colors">
+                  Ir para o login →
                 </button>
-              </div>
+              )}
             </div>
           </div>
 
